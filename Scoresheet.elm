@@ -2,8 +2,8 @@ module Scoresheet
   (newScoresheet, totalScore, upperBonus, Scoresheet, Box(..), countSequential )
   where
 
-import List (..)
-import Dice (..)
+import List exposing (..)
+import Dice exposing (..)
 import Maybe
 import Dict
 
@@ -38,26 +38,27 @@ newScoresheet =
      let numBox n setter = Available (boxUpdate setter (sumDie n))
          fBox f setter = Available (boxUpdate setter f)
      in {
-       aces = numBox 1 (\sh sc -> {sh| aces <- Played sc}),
-       twos = numBox 2 (\sh sc -> {sh| twos <- Played sc}),
-       threes = numBox 3 (\sh sc -> {sh| threes <- Played sc}),
-       fours = numBox 4 (\sh sc -> {sh | fours <- Played sc}),
-       fives = numBox 5 (\sh sc -> {sh | fives <- Played sc}),
-       sixes = numBox 6 (\sh sc -> {sh | sixes <- Played sc}),
+       aces = numBox 1 (\sh sc -> {sh| aces = Played sc}),
+       twos = numBox 2 (\sh sc -> {sh| twos = Played sc}),
+       threes = numBox 3 (\sh sc -> {sh| threes = Played sc}),
+       fours = numBox 4 (\sh sc -> {sh | fours = Played sc}),
+       fives = numBox 5 (\sh sc -> {sh | fives = Played sc}),
+       sixes = numBox 6 (\sh sc -> {sh | sixes = Played sc}),
 
-       threeOfAKind = fBox (ofAKind 3) (\sh sc -> {sh | threeOfAKind <- Played sc}),
-       fourOfAKind = fBox (ofAKind 4) (\sh sc -> {sh | fourOfAKind <- Played sc}),
-       fullHouse = fBox fullHouse (\sh sc -> {sh | fullHouse <- Played sc}),
-       smallStraight = fBox (straight 4 25) (\sh sc -> {sh | smallStraight <- Played sc}),
-       largeStraight = fBox (straight 5 35) (\sh sc -> {sh | largeStraight <- Played sc}),
-       yahtzee = fBox yahtzee (\sh sc -> {sh | yahtzee <- Played sc}),
-       chance = fBox chance (\sh sc -> {sh | chance <- Played sc})
+       threeOfAKind = fBox (ofAKind 3) (\sh sc -> {sh | threeOfAKind = Played sc}),
+       fourOfAKind = fBox (ofAKind 4) (\sh sc -> {sh | fourOfAKind = Played sc}),
+       fullHouse = fBox fullHouse (\sh sc -> {sh | fullHouse = Played sc}),
+       smallStraight = fBox (straight 4 25) (\sh sc -> {sh | smallStraight = Played sc}),
+       largeStraight = fBox (straight 5 35) (\sh sc -> {sh | largeStraight = Played sc}),
+       yahtzee = fBox yahtzee (\sh sc -> {sh | yahtzee = Played sc}),
+       chance = fBox chance (\sh sc -> {sh | chance = Played sc})
      }
 
 sumDie : Die -> Dice -> Score
 sumDie die dice = dice |> diceToIntList |> filter (\d -> d == die) |> sum
 
-ofAKind n dice = case ofAKindHelper n (diceToIntList dice) Dict.empty of
+ofAKind : Int -> Dice -> Score
+ofAKind n dice = case nOfAKindHelper n (diceToIntList dice) Dict.empty of
   Just x -> dice |> diceToIntList |> sum
   Nothing -> 0
 
@@ -65,13 +66,15 @@ incVal x = case x of
   Nothing -> Just 1
   Just v -> Just (v + 1)
 
-ofAKindHelper n dice counter =
+nOfAKindHelper n dice counter =
   case dice of
     [] -> Nothing
-    d :: rest -> let counter' = Dict.update d incVal counter
-                 in let (Just occurances) = Dict.get d counter'
-                    in if occurances >= n then Just d
-                                          else ofAKindHelper n rest counter'
+    die :: rest ->
+      let counter' = Dict.update die incVal counter
+          count = Dict.get die counter' |> Maybe.withDefault 0
+      in
+        if count >= n then Just die
+        else nOfAKindHelper n rest counter'
 
 sumScores xs = case xs of
   [] -> 0
@@ -92,7 +95,7 @@ upperBonus sheet = if (upperTotal sheet >= 62) then 35 else 0
 
 totalScore sheet = upperTotal sheet + upperBonus sheet + lowerTotal sheet
 
-yahtzee dice = case ofAKindHelper 5 (diceToIntList dice) Dict.empty of
+yahtzee dice = case nOfAKindHelper 5 (diceToIntList dice) Dict.empty of
   Just _ -> 50
   _ -> 0
 
