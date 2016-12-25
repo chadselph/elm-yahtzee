@@ -1,22 +1,13 @@
-import Effects exposing (Never)
+module Main exposing (..)
+
 import Game
-import StartApp
 import Task
-
-
-app =
-  StartApp.start
-    { init =  (Game.initialState, Effects.tick Game.Init)
-    , update = Game.update
-    , view = Game.view
-    , inputs = []
-    }
+import Html exposing (Html, button, div, text)
 
 
 main =
-  app.html
-
-
-port tasks : Signal (Task.Task Never ())
-port tasks =
-  app.tasks
+    Html.beginnerProgram
+        { model = Game.initialState
+        , update = Game.update
+        , view = Game.view
+        }

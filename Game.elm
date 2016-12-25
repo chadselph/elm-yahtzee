@@ -1,99 +1,134 @@
-module Game (..) where
+module Game exposing (..)
 
-import Graphics.Input as Input
-import Task
-import Graphics.Element exposing (..)
-import List
-import Text exposing (defaultStyle)
-import Text
-import Signal
 import Random
-import Color exposing (grey)
-import String
-import Char
-import Time
-import Html exposing (fromElement)
-import Time exposing (Time)
-import Effects
-import Effects exposing (Never)
-
 import Dice exposing (..)
 import Scoresheet exposing (..)
-import StartApp
-
-type Roll = FirstRoll | SecondRoll | LastRoll
-
-
-type GameState = GameState Scoresheet Dice Roll Random.Seed
-
-type Action = UpdateScorecard (Dice -> Scoresheet -> Scoresheet) | NewGame | Init Time
+import Html exposing (Html, button, div, text, table, tr, td, th)
+import Html.Events exposing (onClick)
 
 
-initialState = GameState newScoresheet (fst (rollDice (Random.initialSeed 0))) FirstRoll (Random.initialSeed 2)
+type Roll
+    = FirstRoll
+    | SecondRoll
+    | LastRoll
 
 
-newGameButton address = Input.button (Signal.message address NewGame) "New Game"
+type GameState
+    = GameState Scoresheet Dice Roll Random.Seed
+
+
+type Action
+    = UpdateScorecard (Dice -> Scoresheet -> Scoresheet)
+    | NewGame
+    | Roll
+    | UpdateDice Dice
+
+
+initialState =
+    GameState newScoresheet (Tuple.first (rollAll (Random.initialSeed 0))) FirstRoll (Random.initialSeed 2)
+
+
+newGameButton : Html.Html Action
+newGameButton =
+    button [ onClick NewGame ] [ text "New Game" ]
+
+
+rollDiceButton (GameState _ _ roll _) =
+    button [ onClick Roll ] [ text (rollButtonText roll) ]
+
+
+rollButtonText roll =
+    case roll of
+        FirstRoll ->
+            "Roll Again"
+
+        SecondRoll ->
+            "Last Roll"
+
+        LastRoll ->
+            "No Rolls Left"
+
 
 update action (GameState scoresheet dice roll seed) =
-  let newstate = case action of
-    UpdateScorecard (setter) ->
-      let (dice', seed') = rollDice seed in
-        GameState (setter dice scoresheet) dice' FirstRoll seed'
-    NewGame ->
-      let (dice', seed') = rollDice seed in
-        GameState newScoresheet dice' FirstRoll seed'
-    Init time ->
-      let (dice', seed') = rollDice (Random.initialSeed (round time)) in
-        GameState newScoresheet dice' FirstRoll seed'
-  in (newstate, Effects.none)
+    let
+        newstate =
+            case action of
+                Roll ->
+                    case roll of
+                        FirstRoll ->
+                            let
+                                ( dice2, seed2 ) =
+                                    rollUnheld dice seed
+                            in
+                                GameState scoresheet dice2 SecondRoll seed2
 
-textCol s = container 100 40 middle <| centered <| Text.fromString <| s
+                        SecondRoll ->
+                            let
+                                ( dice2, seed2 ) =
+                                    rollUnheld dice seed
+                            in
+                                GameState scoresheet dice2 LastRoll seed2
 
-scoresheet (GameState sb dice roll seed) address =
-  let boxColumn title s =
-    let score box = case box of
-          Played s -> textCol <| toString s
-          Available setter ->
-            Input.button (Signal.message address (UpdateScorecard setter)) " - "
+                        LastRoll ->
+                            GameState scoresheet dice LastRoll seed
+
+                UpdateScorecard setter ->
+                    let
+                        ( dice2, seed2 ) =
+                            rollAll seed
+                    in
+                        GameState (setter dice scoresheet) dice2 FirstRoll seed2
+
+                NewGame ->
+                    let
+                        ( dice2, seed2 ) =
+                            rollAll seed
+                    in
+                        GameState newScoresheet dice2 FirstRoll seed2
+
+                UpdateDice newDice ->
+                    GameState scoresheet newDice roll seed
     in
-       flow right [textCol title, score s]
-  in
-     flow down [
-       flow right <| List.map textCol ["Upper Section", "Score"],
-       boxColumn "Aces" sb.aces,
-       boxColumn "Twos" sb.twos,
-       boxColumn "Threes" sb.threes,
-       boxColumn "Four" sb.fours,
-       boxColumn "Fives" sb.fives,
-       boxColumn "Sixes" sb.sixes,
-       flow right [textCol "Bonus", textCol <| toString <| upperBonus sb],
-       centered <| Text.fromString "Lower Section",
-       boxColumn "3 of a kind" sb.threeOfAKind,
-       boxColumn "4 of a kind" sb.fourOfAKind,
-       boxColumn "Full House" sb.fullHouse,
-       boxColumn "Small Straight" sb.smallStraight,
-       boxColumn "Large Straight" sb.largeStraight,
-
-       boxColumn "Yahtzee" sb.yahtzee,
-       boxColumn "Chance" sb.chance,
-       flow right [textCol "Total", textCol <|toString <| totalScore sb]
-       ]
-
-drawDie i = color grey <| container 40 40 middle <|
-        centered <| Text.height 40 <| Text.fromString <|
-        String.fromChar <| Char.fromCode (0x267f + i)
-
-drawDice (GameState _ dice _ _) =
-  diceToIntList dice |> List.map drawDie |> flow right
-
-view address gamestate =
-  flow right [(scoresheet gamestate address), spacer 100 100,
-              flow down [
-                drawDice gamestate,
-                newGameButton address
-              ]]
-  |> fromElement
+        newstate
 
 
-view2 address model = drawDie model |> fromElement
-update2 action model = (model, Effects.none)
+scoresheet (GameState sb dice roll seed) =
+    let
+        textCol title =
+            tr [] [ th [] [ text title ] ]
+
+        boxColumn title s =
+            let
+                score box =
+                    case box of
+                        Played s ->
+                            text <| toString s
+
+                        Available setter ->
+                            button [ onClick (UpdateScorecard setter) ] [ text " - " ]
+            in
+                tr [] [ td [] [ text title ], td [] [ score s ] ]
+    in
+        table []
+            [ textCol "Upper Section"
+            , boxColumn "Aces" sb.aces
+            , boxColumn "Twos" sb.twos
+            , boxColumn "Threes" sb.threes
+            , boxColumn "Four" sb.fours
+            , boxColumn "Fives" sb.fives
+            , boxColumn "Sixes" sb.sixes
+            , boxColumn "Bonus" (Played (upperBonus sb))
+            , textCol "Lower Section"
+            , boxColumn "3 of a kind" sb.threeOfAKind
+            , boxColumn "4 of a kind" sb.fourOfAKind
+            , boxColumn "Full House" sb.fullHouse
+            , boxColumn "Small Straight" sb.smallStraight
+            , boxColumn "Large Straight" sb.largeStraight
+            , boxColumn "Yahtzee" sb.yahtzee
+            , boxColumn "Chance" sb.chance
+            , boxColumn "Total" (Played (totalScore sb))
+            ]
+
+
+view ((GameState sheet dice roll seed) as gamestate) =
+    div [] [ Dice.view UpdateDice dice, (scoresheet gamestate), rollDiceButton gamestate, newGameButton ]
