@@ -24,8 +24,12 @@ type Action
     | UpdateDice Dice
 
 
-initialState =
-    GameState newScoresheet (Tuple.first (rollAll (Random.initialSeed 0))) FirstRoll (Random.initialSeed 2)
+initialState seed =
+    let
+        ( initialDice, seedNext ) =
+            rollAll (Random.initialSeed seed)
+    in
+        GameState newScoresheet initialDice FirstRoll seedNext
 
 
 newGameButton : Html.Html Action
@@ -49,6 +53,7 @@ rollButtonText roll =
             "No Rolls Left"
 
 
+update : Action -> GameState -> GameState
 update action (GameState scoresheet dice roll seed) =
     let
         newstate =
