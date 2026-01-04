@@ -1,10 +1,9 @@
-module Scoresheet exposing (newScoresheet, totalScore, upperBonus, Scoresheet, Box(..), countSequential)
+module Scoresheet exposing (Box(..), Scoresheet, countSequential, newScoresheet, totalScore, upperBonus)
 
-import List exposing (..)
-import Dice
 import Dice exposing (Dice)
-import Maybe
 import Dict
+import List exposing (..)
+import Maybe
 
 
 type alias Score =
@@ -41,27 +40,27 @@ newScoresheet =
         boxUpdate setField calcScore dice sheet =
             calcScore dice |> setField sheet
     in
-        let
-            numBox n setter =
-                Available (boxUpdate setter (sumDie n))
+    let
+        numBox n setter =
+            Available (boxUpdate setter (sumDie n))
 
-            fBox f setter =
-                Available (boxUpdate setter f)
-        in
-            { aces = numBox 1 (\sh sc -> { sh | aces = Played sc })
-            , twos = numBox 2 (\sh sc -> { sh | twos = Played sc })
-            , threes = numBox 3 (\sh sc -> { sh | threes = Played sc })
-            , fours = numBox 4 (\sh sc -> { sh | fours = Played sc })
-            , fives = numBox 5 (\sh sc -> { sh | fives = Played sc })
-            , sixes = numBox 6 (\sh sc -> { sh | sixes = Played sc })
-            , threeOfAKind = fBox (ofAKind 3) (\sh sc -> { sh | threeOfAKind = Played sc })
-            , fourOfAKind = fBox (ofAKind 4) (\sh sc -> { sh | fourOfAKind = Played sc })
-            , fullHouse = fBox fullHouse (\sh sc -> { sh | fullHouse = Played sc })
-            , smallStraight = fBox (straight 4 25) (\sh sc -> { sh | smallStraight = Played sc })
-            , largeStraight = fBox (straight 5 35) (\sh sc -> { sh | largeStraight = Played sc })
-            , yahtzee = fBox yahtzee (\sh sc -> { sh | yahtzee = Played sc })
-            , chance = fBox chance (\sh sc -> { sh | chance = Played sc })
-            }
+        fBox f setter =
+            Available (boxUpdate setter f)
+    in
+    { aces = numBox 1 (\sh sc -> { sh | aces = Played sc })
+    , twos = numBox 2 (\sh sc -> { sh | twos = Played sc })
+    , threes = numBox 3 (\sh sc -> { sh | threes = Played sc })
+    , fours = numBox 4 (\sh sc -> { sh | fours = Played sc })
+    , fives = numBox 5 (\sh sc -> { sh | fives = Played sc })
+    , sixes = numBox 6 (\sh sc -> { sh | sixes = Played sc })
+    , threeOfAKind = fBox (ofAKind 3) (\sh sc -> { sh | threeOfAKind = Played sc })
+    , fourOfAKind = fBox (ofAKind 4) (\sh sc -> { sh | fourOfAKind = Played sc })
+    , fullHouse = fBox fullHouse (\sh sc -> { sh | fullHouse = Played sc })
+    , smallStraight = fBox (straight 4 25) (\sh sc -> { sh | smallStraight = Played sc })
+    , largeStraight = fBox (straight 5 35) (\sh sc -> { sh | largeStraight = Played sc })
+    , yahtzee = fBox yahtzee (\sh sc -> { sh | yahtzee = Played sc })
+    , chance = fBox chance (\sh sc -> { sh | chance = Played sc })
+    }
 
 
 sumDie : Int -> Dice -> Score
@@ -98,13 +97,14 @@ nOfAKindHelper n dice counter =
                 newCounter =
                     Dict.update die incVal counter
 
-                count =
+                countN =
                     Dict.get die newCounter |> Maybe.withDefault 0
             in
-                if count >= n then
-                    Just die
-                else
-                    nOfAKindHelper n rest newCounter
+            if countN >= n then
+                Just die
+
+            else
+                nOfAKindHelper n rest newCounter
 
 
 sumScores xs =
@@ -143,8 +143,9 @@ lowerTotal sheet =
 
 
 upperBonus sheet =
-    if (upperTotal sheet >= 62) then
+    if upperTotal sheet >= 62 then
         35
+
     else
         0
 
@@ -163,8 +164,9 @@ yahtzee dice =
 
 
 straight size pts dice =
-    if (dice |> Dice.asNumberList |> sort |> (countSequential 1 0)) >= size then
+    if (dice |> Dice.asNumberList |> sort |> countSequential 1 0) >= size then
         pts
+
     else
         0
 
@@ -174,7 +176,7 @@ countSequential current longest dice =
         head :: neck :: rest ->
             let
                 newCurrent =
-                    case (neck - head) of
+                    case neck - head of
                         1 ->
                             current + 1
 
@@ -184,7 +186,7 @@ countSequential current longest dice =
                         _ ->
                             1
             in
-                countSequential newCurrent (max newCurrent longest) (neck :: rest)
+            countSequential newCurrent (max newCurrent longest) (neck :: rest)
 
         [ _ ] ->
             longest

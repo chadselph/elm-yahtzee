@@ -1,12 +1,11 @@
 module Main exposing (..)
 
+import Browser
 import Game
-import Scoresheet exposing (Scoresheet)
-import Task
-import Html exposing (Html, button, div, text)
+import Html exposing (button, text)
 import Html.Events exposing (onClick)
 import Random
-import Platform.Sub
+import Scoresheet exposing (Scoresheet)
 
 
 type State
@@ -50,13 +49,19 @@ update msg st =
                     ( other, Cmd.none )
 
 
-subs model =
+subs : State -> Sub Msg
+subs _ =
     Sub.none
 
 
+init : () -> ( State, Cmd Msg )
+init _ =
+    ( NewGameScreen, Cmd.none )
+
+
 main =
-    Html.program
-        { init = ( NewGameScreen, Cmd.none )
+    Browser.element
+        { init = init
         , view = view
         , update = update
         , subscriptions = subs

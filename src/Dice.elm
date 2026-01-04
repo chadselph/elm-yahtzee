@@ -1,14 +1,10 @@
-module Dice exposing (asNumberList, rollAll, rollUnheld, Dice, Die, view)
+module Dice exposing (Dice, Die, asNumberList, rollAll, rollUnheld, view)
 
-import Random
-import String
-import Text
-import Element exposing (..)
-import Color exposing (grey)
-import Char
-import Html exposing (Html, button, div, text, span, input, label)
-import Html.Attributes exposing (type_, checked, class, style)
+import Html exposing (Html, div, input, label, span, text)
+import Html.Attributes exposing (checked, class, style, type_)
 import Html.Events exposing (onClick)
+import Random
+import String exposing (fromChar)
 
 
 type alias Held =
@@ -42,13 +38,14 @@ rollAll =
 
 nonRandom : a -> Random.Generator a
 nonRandom x =
-    Random.map (\_ -> x) Random.bool
+    Random.map (\_ -> x) (Random.int 0 1)
 
 
 maybeRoll : Die -> Random.Generator Die
 maybeRoll (( _, hold ) as die) =
     if hold then
         nonRandom die
+
     else
         randomDie
 
@@ -74,7 +71,7 @@ randomDie =
         unheldDie n =
             ( n, False )
     in
-        Random.map unheldDie (Random.int 1 6)
+    Random.map unheldDie (Random.int 1 6)
 
 
 diceGenerator : Random.Generator Dice
@@ -97,26 +94,29 @@ view toMsg (Dice d1 d2 d3 d4 d5) =
 
 
 drawDieBox toMsg updated ( i, held ) =
-    span [ style [ ( "float", "right" ) ] ]
+    span [ style "float" "right" ]
         [ label []
             [ input [ type_ "checkbox", onClick (toMsg updated), checked held ] []
             , text
                 (if held then
                     "Holding"
+
                  else
                     "Rolling"
                 )
-            , drawDie ( i, held ) |> toHtml
+            , drawDie ( i, held )
             ]
         ]
 
 
-drawDie : Die -> Element
+drawDie : Die -> Html s
 drawDie ( i, held ) =
-    color grey <|
-        container 70 70 middle <|
-            centered <|
-                Text.height 70 <|
-                    Text.fromString <|
-                        String.fromChar <|
-                            Char.fromCode (0x267F + i)
+    div
+        [ style "height" "75px"
+        , style "width" "75px"
+        , style "font-size" "50pt"
+        , style "text-align" "center"
+        , style "user-select" "none"
+        , style "background-color" "rgb(211, 215, 207)"
+        ]
+        [ text (fromChar <| Char.fromCode (0x267F + i)) ]
